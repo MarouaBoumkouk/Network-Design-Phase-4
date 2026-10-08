@@ -7,7 +7,7 @@
 **Version:** (1)
 
 ## 0 Executive Summary 
-
+   For Phase 2, our team will build off of our previous UDP transfer file project but implementing the Reliable Data Transfer 2.2 Protocol. 
 
 
 ## 1) Phase requirements
@@ -38,28 +38,25 @@ List 5–10 measurable checks that mean you’re done (examples below).
 - [ ] 
 
 ### 2.3 Work breakdown (high-level; Person X will work on A, Person Y will work on B...)
+Workstream A - Packet Structure and Checksums 
+Member will work on packet creation, extraction, and checksum verification  
+
+Workstream B - Sender Implementation 
+Member will implement sender sequence numbers, ACK processing, retransmission, and ACK corruption 
+
+Workstream C - Receiver Implementation
+Member will implement receiver validation, duplicate evaluation, ACK generation, and Data corruption. 
 
 
 ## 3) Architecture + state diagrams
 Your phase specs likely include a reference state diagram. **You should build on it across phases.**
 
-### 3.1 How to evolve the provided state diagram
-For Phase 1:
-1. **Start from the current phase diagram (sender + receiver):** RDT 1.0 — each side is one state with a self-loop (see below).
-2. **Mark specifics:** no new states/transitions yet — this is the first phase, so it's just the base diagram from the textbook (Figure 3.9), no timeouts or checks added.
-3. **Previous vs current:**
-   - Previous phase diagram: N/A, nothing before this
-   - Current phase diagram:
-     - **Sender (state: "Wait for call from above")** → on `rdt_send(data)`: `make_pkt(data)` → `udt_send(packet)` → back to same state
-     - **Receiver (state: "Wait for call from below")** → on `rdt_rcv(packet)`: `extract(packet, data)` → `deliver_data(data)` → back to same state
-> Tip: In your PDF submission, include diagrams as images. In Markdown, you can include ASCII diagrams or link to images in `docs/figures/`.
 
 ### 3.2 Component responsibilities
-- **Sender**
-  - responsibilities:  read the file, split it into 1024-byte packets, send them one at a time over UDP, send a final empty packet to mark the end
+- **Sender(sender.py)**
+  - responsibilities:  
 - **Receiver**
-  - responsibilities:  listen on a port, catch each packet, write it to the output file in order, stop once it gets the end marker
-  - 
+  - responsibilities: 
 - **Shared modules/utilities**
   - packet encode/decode: `packet.py`
   - checksum: not used this phase
