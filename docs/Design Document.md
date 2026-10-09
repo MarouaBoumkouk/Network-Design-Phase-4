@@ -1,6 +1,6 @@
 ## Network Design Project - Phase Proposal and Design Document (Phase 2 of 5)
 **Purpose:**  
-**Names:** Maroua Boumkouk Matthew Nguyen   
+**Names:** Maroua Boumkouk, Matthew Nguyen, Oluchukwu Okeke   
 **GitHub Repo URL (with GitHub usernames):**  https://github.com/MattN11/Network-Design-Phase-2  
 **Phase:** 2  
 **Submission Date:** Friday 09 October 2026  
