@@ -3,7 +3,7 @@
 **Names:** Maroua Boumkouk Matthew Nguyen   
 **GitHub Repo URL (with GitHub usernames):**  https://github.com/MattN11/Network-Design-Phase-2  
 **Phase:** 2  
-**Submission Date:** Friday 09 October 2026 
+**Submission Date:** Friday 09 October 2026  
 **Version:** (1)
 
 ## 0) Executive Summary 
@@ -168,16 +168,6 @@ Our protocol uses three packet types:
 
 ### 4.2 Header fields 
 
-
-| Field | Size (bytes/bits) | Type | Description | Notes |
-|---|---|---|
-| Type | 1 byte | Identifies DATA, ACK, or END |
-| Sequence Number | 4 bytes | Alternates between 0 and 1 |
-| ACK Number | 1 byte | Identifies the acknowledged packet |
-| Length | 2 bytes | Number of payload bytes |
-| Checksum | 2 bytes | used to detect corruption |
-| Payload | Up to 1024 bytes | File data |  
-
 | Field | Size | Description |
 |---|---|---|
 | Type | 1 byte | Identifies DATA, ACK, or END |
@@ -187,7 +177,9 @@ Our protocol uses three packet types:
 | Checksum | 2 bytes | Detects packet corruption |
 | Payload | Up to 1024 bytes | File data |
 
+**Header Format:** `>BIBHH`
 
+**Header Size:** 10 bytes
 
 ## 5) Data structures + module map
 
@@ -201,21 +193,27 @@ Our protocol uses three packet types:
 This section is your “engineering spec” that you implement against. Keep it precise but not code-heavy.
 
 ### 6.1 Sender behavior
-
+The sender uses a stop and wait protocol. It sends one DATA packet and waits for a valid ACK before sending the next packet.
+If the ACK is corrupted, incorrect, or times out, the sender retransmits the same packet. 
 
 
 **Sender pseudocode (recommended):**
 
 
 ### 6.2 Receiver behavior
-
+The receiver checks incoming DATA packets using checksums and sequence numbers.  
+Valid packets are written to the output file. corrupted or duplicate Packets are not written. and the receiver resends its previous ACK.m 
 
 **Receiver pseudocode (recommended):**
 
 
 ### 6.3 Error/loss injection spec (if required by phase)
-N/A
----
+Our project uses `corruption.py` to simulate bit errors.
+
+- **Option 1:** No corruption
+- **Option 2:** ACK corruption at the sender after receiving an ACK
+- **Option 3:** DATA corruption occurs at the receiver after receiving a DATA packet
+  
 
 ## 7) Experiments + metrics plan (required if phase requires figures/plots)
  
