@@ -33,9 +33,9 @@ We will also verify that the original and receive file have matching SHA-256 has
 We will generate performance graphs showing how packet corruption affects file transfer time.
 
 Phase 2 will use:
-- Corruption rates from **0% to 95%**
-- Increments of **5%**
-- **5 trials** per corruption rate
+- Corruption rates from 0% to 95%
+- Increments of 5%
+- 5 trials per corruption rate
 - Average transfer time for each corruption rate
   
 
@@ -81,7 +81,6 @@ Oluchukwu Okeke will implement receiver validation, duplicate evaluation, ACK ge
 
 
 ## 3) Architecture + state diagrams
-Your phase specs likely include a reference state diagram. **You should build on it across phases.**
 
 ## 3.1 How we Evolved the state diagram
 For phase 2, our team is building on the UDP file transfer system developed in Phase 1. 
