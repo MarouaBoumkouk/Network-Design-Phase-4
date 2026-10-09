@@ -154,7 +154,7 @@ flowchart TD
 
 The sender sends DATA packets over UDP, and the receiver responds with ACKs. Corrupted packets trigger retransmissions.
 
-## 4) Packet format (high-level spec)
+## 4) Packet format 
 
 ### 4.1 Packet types
 Our protocol uses three packet types: 
