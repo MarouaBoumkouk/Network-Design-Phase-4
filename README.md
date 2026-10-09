@@ -1,7 +1,7 @@
 # Network-Design-Phase-2
 Maroua Boumkouk
 Matthew Nguyen 
-
+Oluchukwu okeke
 
 
 ## Overview
@@ -10,7 +10,7 @@ This repository implements a UDP/TCP-based file transfer protocol across 6 phase
 | Name | Email | Primary responsibility |
 |---|---|---|
 | Maroua Boumkouk | Maroua_Boumkouk@student.uml.edu | Packet format + checksum (packet.py), bit-error injection (corruption.py), design document
-| Matthew Nguyen  | Matthew_Nguyen@student.uml.edu| Sender FSM + Option 2 (`sender.py`), demo video, [design document?] |
+| Matthew Nguyen  | Matthew_Nguyen@student.uml.edu| Sender FSM + Option 2 (`sender.py`), demo video, [design document] |
 | Oluchukwu okeke| Oluchukwu_okeke@student.uml.edu | Receiver FSM + Option 3 (`receiver.py`), experiments + plot (`run_experiments.py`, `plot_results.py`) |
 
 ## Demo Video (submission)
