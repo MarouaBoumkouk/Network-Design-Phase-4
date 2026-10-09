@@ -39,7 +39,7 @@ Phase 2 will use:
 - Average transfer time for each corruption rate
   
 
-## 2) Phase plan (company-style, lightweight)
+## 2) Phase plan 
 
 
 ### 2.1 Scope: what changes/additions this phase
@@ -60,8 +60,7 @@ The following features will be added:
   - Sliding window protocols
   - Transferring multiple files simultaneously
      
-### 2.2 Acceptance criteria (your checklist)
-List 5–10 measurable checks that mean you’re done (examples below).
+### 2.2 Acceptance criteria 
 
 - [ ] The sender successfully transfers BMP file using UDP 
 - [ ] The receiver reconstructs the original file correctly
@@ -70,15 +69,15 @@ List 5–10 measurable checks that mean you’re done (examples below).
 - [ ] The sender Retransmits packets when ACK is corrupted  
 - [ ] The receiver detects duplicate packets 
 
-### 2.3 Work breakdown (high-level; Person X will work on A, Person Y will work on B...)
+### 2.3 Work breakdown 
 Workstream A - Packet Structure and Checksums 
-Member will work on packet creation, extraction, and checksum verification  
+Maroua Boumkouk will work on packet creation, extraction, and checksum verification  
 
 Workstream B - Sender Implementation 
-Member will implement sender sequence numbers, ACK processing, retransmission, and ACK corruption 
+Matthew Nguyen will implement sender sequence numbers, ACK processing, retransmission, and ACK corruption 
 
 Workstream C - Receiver Implementation
-Member will implement receiver validation, duplicate evaluation, ACK generation, and Data corruption. 
+Oluchukwu Okeke will implement receiver validation, duplicate evaluation, ACK generation, and Data corruption. 
 
 
 ## 3) Architecture + state diagrams
