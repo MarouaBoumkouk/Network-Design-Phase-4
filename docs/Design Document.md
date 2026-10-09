@@ -1,5 +1,5 @@
 ## Network Design Project - Phase Proposal and Design Document (Phase 2 of 5)
-**Purpose:**  
+**Purpose:** Phase 2 improves our UDP file transfer system by implementing RDT 2.2, allowing us to detect corrupted packets and ensure reliable data transfer through acknowledgments and retransmissions.  
 **Names:** Maroua Boumkouk, Matthew Nguyen, Oluchukwu Okeke   
 **GitHub Repo URL (with GitHub usernames):**  https://github.com/MattN11/Network-Design-Phase-2  
 **Phase:** 2  
@@ -184,10 +184,25 @@ Our protocol uses three packet types:
 ## 5) Data structures + module map
 
 ### 5.1 Key data structures
+   | Structure | Purpose | Module|
+   |---|---|---|
+   | Sequence Number (0/1) | Tracks sent and expected packets | `sender.py`, `receiver.py |
+   | Packet | Stores header and payload |   `packet.py` | 
+   | Current Packet | saved until a valid ACK is received | `sender.py` |
+   | Timeout (1 second) | Triggers retransmission | `sender.py` |
+   | Experiment Results | Stores error rates, trials, and times | `experiemt.py` | 
+   
 
 
 ### 5.2 Module map + dependencies
-
+   | Module | Responsibility | 
+   |---|---|
+   |`sender.py` | Sending, ACK validation, retramsission |
+   |`receiver.py` | Receiving, duplicate detection, ACK generation |
+   |`packet.py` | Packet formatting and checksums |
+   |`corruption.py` | simulated bit corruption |
+   |`experiment.py`| Performance testing | 
+   
 
 ## 6) Protocol logic (high-level spec before implementation)
 This section is your “engineering spec” that you implement against. Keep it precise but not code-heavy.
@@ -216,36 +231,120 @@ Our project uses `corruption.py` to simulate bit errors.
   
 
 ## 7) Experiments + metrics plan (required if phase requires figures/plots)
- 
+## 7.1 Measurement definition
+   Our team will measure how packet corruption affects file transfer time using different error rates.
+
+**Completion Time**
+-**Start:** When the sender begins the file transfer 
+-**Stop:** When the sender receives the final valid ACK and completes the transfer.
+-**Measurement:** Python's `time.perf_counter()`
+
+**Experiment Settings:**
+- Corruption rates: 0% to 95%, increasing by 5%
+- Trials: 5 per corruption rate
+- Total: 100 trials per option
+- File: `sample.bmp`
+- Packet payload size: 1024 bytes
+  
+
 
 ### 7.2 Output artifacts
 
+The experiment will produce:
+
+ **CSV:** `results/option2_results.csv`
+- **Graph:** Average transfer time versus ACK corruption rate.
+- **Received file:** `results/received.bmp`
+- **Verification:** SHA-256 comparison of original and received files.
+
+The CSV records the corruption rate, trial number, and transfer time for each experiment.
+
+For Option 2, we completed 100 trials covering 20 different corruption rates.
 
 ## 8) Edge cases + test plan
 
 ### 8.1 Edge cases you expect
 
-| Edge case | Why it matters | Expected behavior |
+| Edge case | Expected behavior |
+|---|---|
+| Corrupted DATA/ACK | Detect error and retransmit|
+| Duplicate packet | Ignore duplicate data and resend ACK |
+| Small final packet | Write remaining bytes correctly |
+| ACK timeout | Retransmit packet | 
+| Duplicate End | resend END ACK|
 
 
 ### 8.2 Tests you will write because of these edge cases
 
+**Unit Tests:** 
+- Verify checksums and packet encoding/decoding
+- Verify alternating sequence numbers
+
+**Integration Tests:**
+- Transfer file with and without corruption
+- Verify retransmission and duplicate handling
+- Compare original and received SHA-256 hashes 
+
 
 ### 8.3 Test artifacts
+- **Input:** `data/sample.bmp`
+- **Output:** `results/received.bmp`
+- **Results:** `results/option2_results.csv`
+- **Evidence:** Console logs, file hashes, and graphs 
 
+   
+## 9) Repo Structure + Reproducibility
 
+Our repository contains the source code, test files, and experiment results.
 
-## 9) Repo structure + reproducibility
+**Project Structure:**
 
+```text
+Network-Design-Phase-2/
+├── src/
+│   ├── sender.py
+│   ├── receiver.py
+│   ├── packet.py
+│   ├── corruption.py
+│   └── experiment.py
+├── data/
+│   └── sample.bmp
+├── results/
+│   ├── received.bmp
+│   └── option2_results.csv
+└── README.md
+```
 
+**Running Option 2:**
 
+Open two terminals in the `src` folder.
+
+**Terminal 1 - Receiver:**
+
+```powershell
+py receiver.py --option 2
+```
+
+**Terminal 2 - Sender:**
+
+```powershell
+py sender.py --option 2 --error_rate 0.2
+```
+**Running Experiments:**
+
+```powershell
+py experiment.py
+```
+
+The README will contain setup instructions, and the design document and graphs will be included in the repository.
 
 
 ## 10) Team plan, ownership, and milestones
 ### 10.1 Task ownership
 | Task | Owner | Target date | Definition of done |
+|---|---|---|---|
 
 
-### 10.2 Milestones (keep it realistic)
+### 10.2 Milestones 
 
 
