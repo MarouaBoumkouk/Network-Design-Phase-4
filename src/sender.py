@@ -8,7 +8,6 @@ FILE = "../data/sample.bmp"
 CHUNK_SIZE = 1024
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-
 seq = 0
 total_bytes = 0
 with open(FILE, "rb") as f:
