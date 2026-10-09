@@ -1,7 +1,7 @@
 ## Network Design Project - Phase Proposal and Design Document (Phase 2 of 5)
 **Purpose:**  
 **Names:** Maroua Boumkouk Matthew Nguyen   
-**GitHub Repo URL (with GitHub usernames):**  https://github.com/MattN11/Network-Design-Phase-2
+**GitHub Repo URL (with GitHub usernames):**  https://github.com/MattN11/Network-Design-Phase-2  
 **Phase:** 2  
 **Submission Date:** Friday 09 October 2026 
 **Version:** (1)
@@ -84,34 +84,110 @@ Member will implement receiver validation, duplicate evaluation, ACK generation,
 ## 3) Architecture + state diagrams
 Your phase specs likely include a reference state diagram. **You should build on it across phases.**
 
+## 3.1 How we Evolved the state diagram
+For phase 2, our team is building on the UDP file transfer system developed in Phase 1. 
+
+In phase 1, the sender transmitted packets and waited for acknowledgements before continuing. In phase 2, we added checksum verification, alternating sequence numbers, and retransmission to handle corrupted packets.  
+```mermaid
+flowchart TD
+    A["Read file chunk"] --> B["Send DATA"]
+    B --> C["Wait for ACK"]
+    C --> D{"ACK received?"}
+    D -->|Yes| E["Next chunk"]
+    D -->|No| B
+    E --> B
+```
+
+**Current Phase (Phase 2 - Sender):**
+
+```mermaid
+flowchart TD
+    A["Send DATA 0"] --> B{"Valid ACK 0?"}
+    B -->|Yes| C["Send DATA 1"]
+    B -->|No / Timeout| A
+    C --> D{"Valid ACK 1?"}
+    D -->|Yes| A
+    D -->|No / Timeout| C
+```
+
+**Current Phase (Phase 2 - Receiver):**
+
+```mermaid
+flowchart TD
+    A["Expect DATA 0"] --> B{"Valid DATA 0?"}
+    B -->|Yes| C["Write data, ACK 0"]
+    B -->|No| D["Resend ACK 1"]
+    D --> A
+    C --> E["Expect DATA 1"]
+    E --> F{"Valid DATA 1?"}
+    F -->|Yes| G["Write data, ACK 1"]
+    F -->|No| H["Resend ACK 0"]
+    H --> E
+    G --> A
+```
+
 
 ### 3.2 Component responsibilities
 - **Sender(sender.py)**
-  - responsibilities:  
+  responsibilities:
+  - Reads and sends file chunks
+  - Tracks sequence numbers and validated ACKs
+  - Retransmits packets when needed
+  - Simulates ACK corruption
+    
+    
 - **Receiver**
-  - responsibilities: 
+  Responsibilities:
+  - Receives and verifies DATA packets
+  - Detects duplicates and writes valid data
+  - Sends ACKs and handles DATA corruption
+  - Processes the END packet
+     
 - **Shared modules/utilities**
   - packet encode/decode: `packet.py`
-  - checksum: not used this phase
-  - logging/timing: plain 
-  - CLI/config parsing: none
+  - Checksum: `packet.py`
+  - Error injection: `corruption.py`
+  - Logging/timing: Console output and `time.perf_counter()`
+  - CLI parsing: `argpars`
 
 ### 3.3 Message flow overview
 
+The sender sends DATA packets over UDP, and the receiver responds with ACKs. Corrupted packets trigger retransmissions.
 
 ## 4) Packet format (high-level spec)
 
 ### 4.1 Packet types
+Our protocol uses three packet types: 
+
+| Type | Value | Description |  
+|---|---|---|
+| DATA | 0 | Contains file data | 
+| END | 1 | Signals the end of the transfer|
+| ACK | 2 | Confirms packet reception | 
 
 
-
-### 4.2 Header fields (this is the “field table”)
+### 4.2 Header fields 
 
 
 | Field | Size (bytes/bits) | Type | Description | Notes |
+|---|---|---|
+| Type | 1 byte | Identifies DATA, ACK, or END |
+| Sequence Number | 4 bytes | Alternates between 0 and 1 |
+| ACK Number | 1 byte | Identifies the acknowledged packet |
+| Length | 2 bytes | Number of payload bytes |
+| Checksum | 2 bytes | used to detect corruption |
+| Payload | Up to 1024 bytes | File data |  
+
+| Field | Size | Description |
+|---|---|---|
+| Type | 1 byte | Identifies DATA, ACK, or END |
+| Sequence Number | 4 bytes | Alternates between 0 and 1 |
+| ACK Number | 1 byte | Identifies the acknowledged packet |
+| Length | 2 bytes | Number of payload bytes |
+| Checksum | 2 bytes | Detects packet corruption |
+| Payload | Up to 1024 bytes | File data |
 
 
----
 
 ## 5) Data structures + module map
 
