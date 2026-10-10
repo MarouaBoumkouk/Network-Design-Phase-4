@@ -1,5 +1,5 @@
 # Network Design Project: Phase 2 (RDT 2.2)
-Maroua Boumkouk, [teammate names]
+Maroua Boumkouk, Matthew Nguyen, Oluchukwu Okeke 
 
 ## Overview
 Phase 2 adds RDT 2.2 on top of the Phase 1 UDP file transfer. It uses a checksum, alternating 0/1 sequence numbers, and ACKs only (no NAKs), with stop-and-wait sending. It covers three options: no errors, ACK bit-errors, and DATA bit-errors.
