@@ -7,12 +7,12 @@ Phase 2 adds RDT 2.2 on top of the Phase 1 UDP file transfer. It uses a checksum
 ## Team
 | Name | Email | Primary responsibility |
 |---|---|---|
-| Maroua Boumkouk | Maroua_Boumkouk@student.uml.edu | [part] |
-| [name] | [email] | [part] |
+| Maroua Boumkouk | Maroua_Boumkouk@student.uml.edu | `packet.py` (header + checksum), `corruption.py` (bit flips), design document, final check of all deliverables also experiments and plot (`run_experiments.py`, `plot_results.py`) |
+| Matthew Nguyen | Matthew_Nguyen@student.uml.edu | `sender.py` (sender FSM, Option 2), README, demo video |
+| Oluchi Okeke | Oluchi_Okeke@student.uml.edu | `receiver.py` (receiver FSM, Option 3)|
 
 ## Demo Video
-- **YouTube (unlisted):** [link]
-- [time] Option 1, [time] Option 2, [time] Option 3, [time] plot
+- **YouTube (unlisted):** https://youtu.be/wzna6eNO37I
 
 ---
 
