@@ -8,9 +8,15 @@
 - Responsible for the final review of project
 
 ## Matthew Nguyen - Sender Implementation 
-- Constructed ‘sender.py’ using the RDT 2.2 
+- Constructed `sender.py` using the RDT 2.2 
 - Added alternating sequence numbers and ACK validation 
 - Implemented retransmission and ACK corruption 
 - Responsible for the design document 
 
+## Oluchukwu Okeke 
 
+
+## Teammate collaboration 
+- Used GitHub to organize and integrate project code
+- Worked together to test the RDT 2.2 protocol
+- Reviewed the project before submission
