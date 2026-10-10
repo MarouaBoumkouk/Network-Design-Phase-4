@@ -2,6 +2,7 @@
 
 Usage (from the repo root, after run_experiments.py):
     python scripts/plot_results.py
+Reads results/avg_times.csv, writes results/completion_time.png.
 """
 import csv
 import os
@@ -13,7 +14,6 @@ import matplotlib.pyplot as plt
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RESULTS = os.path.join(ROOT, "results")
 
-# read the averages from the CSV
 rates, avg = [], {1: [], 2: [], 3: []}
 with open(os.path.join(RESULTS, "avg_times.csv")) as f:
     for row in csv.DictReader(f):
@@ -21,7 +21,6 @@ with open(os.path.join(RESULTS, "avg_times.csv")) as f:
         for o in (1, 2, 3):
             avg[o].append(float(row[f"option{o}_avg_s"]))
 
-# one line per option: (label, color, marker)
 lines = {
     1: ("Option 1: no errors", "#2a78d6", "o"),
     2: ("Option 2: ACK bit-errors", "#eb6834", "s"),
@@ -30,7 +29,8 @@ lines = {
 
 fig, ax = plt.subplots(figsize=(9, 5.5), dpi=150)
 for o, (label, color, marker) in lines.items():
-    ax.plot(rates, avg[o], color=color, marker=marker, markersize=6, linewidth=2, label=label)
+    ax.plot(rates, avg[o], color=color, marker=marker, markersize=6,
+            linewidth=2, label=label)
 
 ax.set_xticks(rates)
 ax.set_xlabel("Error rate (%)")

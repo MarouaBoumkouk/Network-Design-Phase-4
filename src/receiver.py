@@ -1,82 +1,100 @@
-import socket
+"""RDT 2.2 receiver (Kurose/Ross Figure 3.14).
+
+States:
+    Wait for 0 from below: good seq 0 -> deliver, send ACK 0 -> Wait for 1
+                           corrupt or seq 1 -> resend last ACK
+    Wait for 1 from below: good seq 1 -> deliver, send ACK 1 -> Wait for 0
+                           corrupt or seq 0 -> resend last ACK
+
+Option 3 flips bits in received DATA packets here, on the receiver's receive path.
+
+One change from the textbook: the book uses `oncethru` so the receiver sends
+nothing if the very first packet is corrupt. With no timer (RDT 2.2 has none),
+the sender would then wait forever. So the last ACK starts as ACK 1, and the
+receiver always resends it. The sender is waiting for ACK 0, sees ACK 1, and
+resends packet 0, which is the same thing the book's FSM wants to happen.
+
+Usage (from src/):
+    python receiver.py --option 1
+    python receiver.py --option 3 --error-rate 0.2
+"""
 import argparse
-from packet import TYPE_END, extract_packet, is_corrupt, make_ack 
+import socket
+
+from packet import TYPE_END, extract_packet, is_corrupt, make_ack
 from corruption import maybe_corrupt
 
-PORT = 9000
-OUT_FILE = "../results/received.bmp"
-RECV_BUFFER_SIZE = 2048  
+RECV_BUFFER_SIZE = 2048
 LINGER = 2.0  # seconds to keep answering after END, in case our last ACK got corrupted
 
-def receive_file(out_path=OUT_FILE, port=PORT, option=1, error_rate=0.0, quiet=False,
+
+def receive_file(out_path, port=9000, option=1, error_rate=0.0, quiet=False,
                  sock=None, linger=LINGER):
-    """Receive one file with RDT 2.2 and write it to out_path."""
-    data_error_rate = error_rate if option == 3 else 0.0   # Option 3 only
+    """Receive one file with RDT 2.2 and write it to out_path. Returns stats."""
+    data_error_rate = error_rate if option == 3 else 0.0
     log = (lambda *a: None) if quiet else print
 
     if sock is None:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind(("0.0.0.0", port))
-        log(f"Receiver listening on port {port}, writing to {out_path}")
+        log(f"[recv] listening on port {port}, writing to {out_path}")
 
-    expected = 0             # which seq we're waiting for (0 or 1)
-    sndpkt = make_ack(1)     # last ACK sent (starts as ACK 1 so a bad first packet can't get stuck)
-    total_packets = 0
-    total_bytes = 0
+    expected = 0             # state: waiting for `expected` from below
+    sndpkt = make_ack(1)     # last ACK sent (see note at top)
+    stats = {"delivered": 0, "bytes": 0, "corrupt": 0, "duplicates": 0}
     done = False
-    
+
     with open(out_path, "wb") as out:
         while True:
             try:
                 rcvpkt, addr = sock.recvfrom(RECV_BUFFER_SIZE)
             except socket.timeout:
-                break        # only happens after END, when the sender stops talking
+                break        # only reached after END, when the sender went quiet
+            rcvpkt = maybe_corrupt(rcvpkt, data_error_rate)
 
-            rcvpkt = maybe_corrupt(rcvpkt, data_error_rate)   # Option 3: maybe flip a bit
-
-            # damaged packet -> resend last ACK
             if is_corrupt(rcvpkt):
-                log("Corrupt packet -> resend last ACK")
+                stats["corrupt"] += 1
+                log(f"[recv] corrupt packet -> resend last ACK")
                 sock.sendto(sndpkt, addr)
                 continue
 
             pkt_type, seq, _, payload = extract_packet(rcvpkt)
-
-            # duplicate (wrong seq) -> resend last ACK, don't write again
             if seq != expected:
-                log(f"Duplicate seq={seq} -> resend last ACK")
+                stats["duplicates"] += 1
+                log(f"[recv] duplicate seq={seq} -> resend last ACK")
                 sock.sendto(sndpkt, addr)
                 continue
 
-            # good packet with the right seq
+            # good packet with the expected seq: extract, deliver, ACK
             if pkt_type == TYPE_END:
                 done = True
             else:
                 out.write(payload)
-                total_packets += 1
-                total_bytes += len(payload)
-
+                stats["delivered"] += 1
+                stats["bytes"] += len(payload)
             sndpkt = make_ack(seq)
             sock.sendto(sndpkt, addr)
-            log(f"Received seq={seq} -> ACK {seq}")
-            expected = 1 - expected     # flip 0 <-> 1
+            log(f"[recv] got seq={seq} -> ACK {seq}")
+            expected = 1 - expected
 
             if done:
-                sock.settimeout(linger)  # wait a bit in case END gets resent
+                # Stay around a bit: if our ACK for END was corrupted the
+                # sender will resend END, and we need to ACK it again.
+                sock.settimeout(linger)
 
     sock.close()
-    log(f"Transfer complete: {total_packets} packets, {total_bytes} bytes")
-    return {"packets": total_packets, "bytes": total_bytes}
+    log(f"[recv] done: {stats['delivered']} packets, {stats['bytes']} bytes")
+    return stats
 
 
 def main():
     p = argparse.ArgumentParser(description="RDT 2.2 receiver")
-    p.add_argument("--out", default=OUT_FILE)
-    p.add_argument("--port", type=int, default=PORT)
+    p.add_argument("--out", default="../results/received.bmp")
+    p.add_argument("--port", type=int, default=9000)
     p.add_argument("--option", type=int, choices=[1, 2, 3], default=1,
                    help="1=no errors, 2=ACK bit-errors (sender), 3=DATA bit-errors (here)")
     p.add_argument("--error-rate", type=float, default=0.0,
-                   help="chance (0-1) a DATA packet gets a bit flipped; Option 3 only")
+                   help="chance (0-1) that a DATA packet gets a bit flipped; Option 3 only")
     p.add_argument("--quiet", action="store_true")
     a = p.parse_args()
     receive_file(a.out, a.port, a.option, a.error_rate, a.quiet)
@@ -84,5 +102,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
