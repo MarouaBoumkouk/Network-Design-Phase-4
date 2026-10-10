@@ -2,7 +2,7 @@
 **Project:** Network Design - RDT 2.2 
 
 ## Marmoua Boumouk  - Packet Structure and Corruption
-- Responsible for ‘packet.py’, including packet headers and checksums
+- Responsible for `packet.py`, including packet headers and checksums
 - Responsible for `corruption.py`, including bit corruption simulation
 - Prepared the Phase 2 Read Me and demonstration video 
 - Responsible for the final review of project
