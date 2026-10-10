@@ -14,7 +14,7 @@
 - Responsible for the design document 
 
 ## Oluchukwu Okeke 
-
+- `receiver.py` (receiver FSM, Option 3)|
 
 ## Teammate collaboration 
 - Used GitHub to organize and integrate project code
