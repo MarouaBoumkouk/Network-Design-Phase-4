@@ -46,7 +46,7 @@ def transfer(option, rate):
     sock.bind(("127.0.0.1", 0))
     t = threading.Thread(target=receive_file, kwargs=dict(
         out_path=OUT, option=option, error_rate=rate, quiet=True,
-        sock=sock, linger=0.2))
+        sock=sock, linger=1.0))
     t.start()
     elapsed, stats = send_file(FILE, "127.0.0.1", sock.getsockname()[1], option, rate, quiet=True)
     t.join()
