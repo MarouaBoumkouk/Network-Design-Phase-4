@@ -1,4 +1,4 @@
-"""Bit-error injection used by Option 2 (ACKs) and Option 3 (DATA)."""
+"""Bit-error and loss injection for Options 2-5."""
 import random
 
 
@@ -10,3 +10,7 @@ def maybe_corrupt(packet: bytes, rate: float, rng=random) -> bytes:
     bit = rng.randrange(len(data) * 8)
     data[bit // 8] ^= 1 << (bit % 8)
     return bytes(data)
+
+def maybe_drop(rate: float, rng=random) -> bool:
+    """Return True with probability `rate` (the packet is treated as lost)."""
+    return rate > 0 and rng.random() < rate
