@@ -1,42 +1,43 @@
-## Network Design Project - Phase Proposal and Design Document (Phase 2 of 5)
-**Purpose:** Phase 2 improves our UDP file transfer system by implementing RDT 2.2, allowing us to detect corrupted packets and ensure reliable data transfer through acknowledgments and retransmissions.  
+## Network Design Project - Phase Proposal and Design Document (Phase 3 of 5)
+**Purpose:** Phase 3 adds RDT 3.0 to our UDP file transfer. The sender gets a countdown timer so it can recover from lost DATA and ACK packets, not just corrupted ones.  
 **Names:** Maroua Boumkouk, Matthew Nguyen, Oluchukwu Okeke   
-**GitHub Repo URL (with GitHub usernames):**  https://github.com/MattN11/Network-Design-Phase-2  
-**Phase:** 2  
-**Submission Date:** Friday 09 October 2026  
+**GitHub Repo URL (with GitHub usernames):** https://github.com/MarouaBoumkouk/Network-Design-Phase-3  
+**Phase:** 3 
+**Submission Date:** Saturday 23 October 2026  
 **Version:** (1)
 
 ## 0) Executive Summary 
-   For Phase 2, our team will build off of our previous UDP transfer file project but implementing the Reliable Data Transfer 2.2 Protocol. This phase will focus on detecting corrupted packets, acknowledgements, and recover through retransmission. Our implementation uses alternating sequence numbers, checksums, and acknowledgement to make sure the file is transferred correctly. 
+   In Phase 2 we built RDT 2.2 (checksum, alternating 0/1 sequence numbers, ACK-only, stop-and-wait). RDT 2.2 assumes packets are never lost, so if a packet disappears the sender waits forever. In Phase 3 we add a countdown timer to the sender (RDT 3.0). If no valid ACK arrives before the timer runs out, the sender resends the same packet. The receiver stays the same as RDT 2.2.
 
-We will test three scenarios:
-1. File transfer with no errors
-2. ACK bit corruption at the sender.
-3. DATA bit corruption at the receiver
+We will test five scenarios:
+1. No errors or loss
+2. ACK bit-errors at the sender
+3. DATA bit-errors at the receiver
+4. ACK loss at the sender
+5. DATA loss at the receiver
 
 ## 1) Phase requirements
 ### 1.1 Demo deliverable
-- **Private YouTube link:**  https://youtu.be/wzna6eNO37I
+- **Private YouTube link:** 
 
 
 ### 1.2 Required demo scenarios
-| Option | Scenario | Expected Result|
-|---|---|---|
-| 1 | No Errors | File tansfers succesfully |
-| 2 | ACK bit corruption | Sender detects corrupted ACKs and retransmits DATA packets |
-| 3 | DATA bit corruption | Receiver detects corrupted DATA packets and resends its previous ACK |
-
-We will also verify that the original and receive file have matching SHA-256 hashes.
+| Option | Scenario | Where it happens | Expected result |
+|---|---|---|---|
+| 1 | No errors/loss | - | File transfers with 0 resends |
+| 2 | ACK bit-error | Sender, after receiving an ACK | Sender ignores the corrupt ACK, times out, resends |
+| 3 | DATA bit-error | Receiver, after receiving DATA | Receiver resends last ACK; sender ignores the wrong ACK, times out, resends |
+| 4 | ACK loss | Sender, after receiving an ACK | ACK is dropped; sender times out and resends |
+| 5 | DATA loss | Receiver, after receiving DATA | DATA is dropped, no ACK sent; sender times out and resends |
+ 
+For every option we check that the original and received files have the same SHA-256 hash.
 
 ### 1.3 Required figures / plots
 
-We will generate performance graphs showing how packet corruption affects file transfer time.
-
-Phase 2 will use:
-- Corruption rates from 0% to 95%
-- Increments of 5%
-- 5 trials per corruption rate
-- Average transfer time for each corruption rate
+- One chart with 5 lines (Options 1-5)
+- x-axis: error/loss rate, 0% to 95% in steps of 5%
+- y-axis: average completion time (seconds)
+- Each point is the average of 5 runs
   
 
 ## 2) Phase plan 
@@ -44,220 +45,241 @@ Phase 2 will use:
 
 ### 2.1 Scope: what changes/additions this phase
 
-For phase 2, our team will improve our previous UDP file transfer project by implementing the RDT 2.2 protocol
-
-The following features will be added:
-- Alternating sequence numbers
-- Checksum generation and verification
-- Detection of corrupted DATA and ACK packets
-- Retransmission when ACK is corrupted or incorrect
-- Detection of duplicate packets
-- ACK generation and validation
-- Simulation of DATA and ACK bit Corruption
-
-  **Out of Scope:**
-  - Simulating packet loss as a separate test scenario
-  - Sliding window protocols
-  - Transferring multiple files simultaneously
+- Countdown timer in the sender (start, stop, timeout)
+- Resend on timeout and restart the timer
+- Corrupt or wrong ACKs are ignored (sender waits for the timeout), to match the RDT 3.0 FSM
+- Packet loss injection: `maybe_drop()` for Options 4 and 5
+- Cap on END retries so the sender can't loop forever after the receiver closes
+- Experiments and plot for all 5 options
+**Not changing:**
+- Packet format and checksum (`packet.py`)
+- Receiver logic (RDT 3.0 receiver = RDT 2.2 receiver)
+**Out of scope:**
+- Pipelining (Go-Back-N, Selective Repeat) - later phases
+- Adaptive timeout (like TCP's RTT estimate)
+- Sending multiple files at once
      
 ### 2.2 Acceptance criteria 
 
-- [ ] The sender successfully transfers BMP file using UDP 
-- [ ] The receiver reconstructs the original file correctly
-- [ ] Sequence numbers alternate between 1 and 0
-- [ ] Checksums detect corrupted DATA and ACK packets 
-- [ ] The sender Retransmits packets when ACK is corrupted  
-- [ ] The receiver detects duplicate packets 
+- [ ] File transfers correctly in all 5 options (SHA-256 match)
+- [ ] Sender resends when the timer runs out
+- [ ] Sender stops the timer on a valid ACK
+- [ ] Corrupt/wrong ACKs do not cause an instant resend
+- [ ] Lost ACKs (Option 4) and lost DATA (Option 5) are recovered
+- [ ] Receiver ignores duplicates and resends its last ACK
+- [ ] Plot has 5 lines, 0-95% in steps of 5%, each point = average of 5 runs
 
 ### 2.3 Work breakdown 
-Workstream A - Packet Structure and Checksums 
-Maroua Boumkouk will work on packet creation, extraction, and checksum verification  
 
-Workstream B - Sender Implementation 
-Matthew Nguyen will implement sender sequence numbers, ACK processing, retransmission, and ACK corruption 
-
-Workstream C - Receiver Implementation
-Oluchukwu Okeke will implement receiver validation, duplicate evaluation, ACK generation, and Data corruption. 
+**Workstream A - Design, loss injection, tests, README** (Maroua Boumkouk)
+Design document, `maybe_drop()` in `corruption.py`, `test_rdt.py` for all 5 options, README, final check.
+ 
+**Workstream B - Sender** (Matthew Nguyen)
+Countdown timer, ignore bad ACKs, Option 4 ACK drop, END retry cap, demo video.
+ 
+**Workstream C - Receiver and experiments** (Oluchukwu Okeke)
+Option 5 DATA drop, `run_experiments.py` and `plot_results.py` for 5 options.
+ 
 
 
 ## 3) Architecture + state diagrams
 
 ## 3.1 How we Evolved the state diagram
-For phase 2, our team is building on the UDP file transfer system developed in Phase 1. 
-
-In phase 1, the sender transmitted packets and waited for acknowledgements before continuing. In phase 2, we added checksum verification, alternating sequence numbers, and retransmission to handle corrupted packets.  
-```mermaid
-flowchart TD
-    A["Read file chunk"] --> B["Send DATA"]
-    B --> C["Wait for ACK"]
-    C --> D{"ACK received?"}
-    D -->|Yes| E["Next chunk"]
-    D -->|No| B
-    E --> B
-```
-
-**Current Phase (Phase 2 - Sender):**
-
+In Phase 2 the sender only resent when it got a corrupt or wrong ACK. If a packet was lost, nothing came back and the sender was stuck. In Phase 3 the timer fixes this: every send starts the timer, and a timeout means "resend". We also changed the sender so a corrupt or wrong ACK does nothing (the timer handles it), which is what the RDT 3.0 FSM says.
+ 
+**Previous phase (Phase 2 - RDT 2.2 sender):**
 ```mermaid
 flowchart TD
     A["Send DATA 0"] --> B{"Valid ACK 0?"}
     B -->|Yes| C["Send DATA 1"]
-    B -->|No / Timeout| A
+    B -->|No: corrupt or ACK 1| A
     C --> D{"Valid ACK 1?"}
     D -->|Yes| A
-    D -->|No / Timeout| C
+    D -->|No: corrupt or ACK 0| C
 ```
-
-**Current Phase (Phase 2 - Receiver):**
-
+ 
+**Current phase (Phase 3 - RDT 3.0 sender):**
 ```mermaid
-flowchart TD
-    A["Expect DATA 0"] --> B{"Valid DATA 0?"}
-    B -->|Yes| C["Write data, ACK 0"]
-    B -->|No| D["Resend ACK 1"]
-    D --> A
-    C --> E["Expect DATA 1"]
-    E --> F{"Valid DATA 1?"}
-    F -->|Yes| G["Write data, ACK 1"]
-    F -->|No| H["Resend ACK 0"]
-    H --> E
-    G --> A
+stateDiagram-v2
+    [*] --> WaitCall0
+    WaitCall0 --> WaitAck0: send DATA 0, start timer
+    WaitAck0 --> WaitAck0: corrupt or ACK 1 / do nothing
+    WaitAck0 --> WaitAck0: timeout / resend DATA 0, restart timer
+    WaitAck0 --> WaitCall1: valid ACK 0 / stop timer
+    WaitCall1 --> WaitAck1: send DATA 1, start timer
+    WaitAck1 --> WaitAck1: corrupt or ACK 0 / do nothing
+    WaitAck1 --> WaitAck1: timeout / resend DATA 1, restart timer
+    WaitAck1 --> WaitCall0: valid ACK 1 / stop timer
 ```
-
-
+ 
+**Receiver (same as RDT 2.2):**
+```mermaid
+stateDiagram-v2
+    [*] --> Wait0
+    Wait0 --> Wait1: valid DATA 0 / deliver, send ACK 0
+    Wait0 --> Wait0: corrupt or DATA 1 / resend last ACK
+    Wait1 --> Wait0: valid DATA 1 / deliver, send ACK 1
+    Wait1 --> Wait1: corrupt or DATA 0 / resend last ACK
+```
+ 
 ### 3.2 Component responsibilities
-- **Sender(sender.py)**
-  responsibilities:
-  - Reads and sends file chunks
-  - Tracks sequence numbers and validated ACKs
-  - Retransmits packets when needed
-  - Simulates ACK corruption
-    
-    
-- **Receiver**
-  Responsibilities:
-  - Receives and verifies DATA packets
-  - Detects duplicates and writes valid data
-  - Sends ACKs and handles DATA corruption
-  - Processes the END packet
-     
-- **Shared modules/utilities**
-  - packet encode/decode: `packet.py`
-  - Checksum: `packet.py`
-  - Error injection: `corruption.py`
-  - Logging/timing: Console output and `time.perf_counter()`
-  - CLI parsing: `argpars`
+- **Sender (`sender.py`)**
+  - Splits the file into 1024-byte chunks and sends them one at a time
+  - Runs the countdown timer and resends on timeout
+  - Checks ACKs (checksum, type, ACK number)
+  - Option 2: corrupts received ACKs; Option 4: drops received ACKs
+  - Measures completion time
+- **Receiver (`receiver.py`)**
+  - Checks DATA packets (checksum, sequence number)
+  - Writes in-order data, ignores duplicates, resends last ACK
+  - Option 3: corrupts received DATA; Option 5: drops received DATA
+  - Stays open for a short time after END in case its last ACK is lost
+- **Shared modules**
+  - Packet encode/decode + checksum: `packet.py`
+  - Bit errors + loss: `corruption.py` (`maybe_corrupt()`, `maybe_drop()`)
+  - Timing: `time.perf_counter()`
+  - CLI: `argparse`
+
 
 ### 3.3 Message flow overview
 
-The sender sends DATA packets over UDP, and the receiver responds with ACKs. Corrupted packets trigger retransmissions.
+The sender sends one DATA packet and starts the timer. The receiver answers with an ACK. If the ACK is valid, the sender stops the timer and sends the next packet. If the DATA or ACK is lost or corrupted, no valid ACK arrives, the timer runs out, and the sender resends.
 
 ## 4) Packet format 
+Same as Phase 2 (no changes).
 
 ### 4.1 Packet types
-Our protocol uses three packet types: 
-
-| Type | Value | Description |  
+| Type | Value | Description |
 |---|---|---|
-| DATA | 0 | Contains file data | 
-| END | 1 | Signals the end of the transfer|
-| ACK | 2 | Confirms packet reception | 
-
+| DATA | 0 | File data |
+| END | 1 | End of transfer |
+| ACK | 2 | Acknowledgment |
 
 ### 4.2 Header fields 
 
 | Field | Size | Description |
 |---|---|---|
-| Type | 1 byte | Identifies DATA, ACK, or END |
-| Sequence Number | 4 bytes | Alternates between 0 and 1 |
-| ACK Number | 1 byte | Identifies the acknowledged packet |
-| Length | 2 bytes | Number of payload bytes |
-| Checksum | 2 bytes | Detects packet corruption |
+| Type | 1 byte | DATA, END, or ACK |
+| Sequence Number | 4 bytes | 0 or 1 |
+| ACK Number | 1 byte | Seq number being ACKed |
+| Length | 2 bytes | Payload length |
+| Checksum | 2 bytes | 16-bit Internet checksum over header + payload |
 | Payload | Up to 1024 bytes | File data |
-
-**Header Format:** `>BIBHH`
-
+ 
+**Header format:** `>BIBHH` | **Header size:** 10 bytes
 **Header Size:** 10 bytes
 
 ## 5) Data structures + module map
 
 ### 5.1 Key data structures
-   | Structure | Purpose | Module|
-   |---|---|---|
-   | Sequence Number (0/1) | Tracks sent and expected packets | `sender.py`, `receiver.py |
-   | Packet | Stores header and payload |   `packet.py` | 
-   | Current Packet | saved until a valid ACK is received | `sender.py` |
-   | Timeout (1 second) | Triggers retransmission | `sender.py` |
-   | Experiment Results | Stores error rates, trials, and times | `experiemt.py` | 
+| Structure | Purpose | Module |
+|---|---|---|
+| `seq` (0/1) | Current sequence number | `sender.py`, `receiver.py` |
+| `sndpkt` | Last packet sent, kept for resends | `sender.py`, `receiver.py` |
+| `deadline` | Time when the timer runs out | `sender.py` |
+| `TIMEOUT` | Timer length (about 50 ms) | `sender.py` |
+| `MAX_END_RETRIES` | Cap on END resends | `sender.py` |
+| `times[option][rate][run]` | Raw completion times | `run_experiments.py` | 
    
 
 
 ### 5.2 Module map + dependencies
-   | Module | Responsibility | 
-   |---|---|
-   |`sender.py` | Sending, ACK validation, retramsission |
-   |`receiver.py` | Receiving, duplicate detection, ACK generation |
-   |`packet.py` | Packet formatting and checksums |
-   |`corruption.py` | simulated bit corruption |
-   |`experiment.py`| Performance testing | 
+| Module | Responsibility |
+|---|---|
+| `src/sender.py` | Sending, timer, ACK checks, resends, Options 2 and 4 |
+| `src/receiver.py` | Receiving, duplicate check, ACKs, Options 3 and 5 |
+| `src/packet.py` | Packet format and checksum |
+| `src/corruption.py` | `maybe_corrupt()` and `maybe_drop()` |
+| `scripts/test_rdt.py` | Tests for all 5 options |
+| `scripts/run_experiments.py` | Timing runs, saves CSV |
+| `scripts/plot_results.py` | Makes the 5-line plot |
    
 
 ## 6) Protocol logic (high-level spec before implementation)
-This section is your “engineering spec” that you implement against. Keep it precise but not code-heavy.
+
 
 ### 6.1 Sender behavior
-The sender uses a stop and wait protocol. It sends one DATA packet and waits for a valid ACK before sending the next packet.
-If the ACK is corrupted, incorrect, or times out, the sender retransmits the same packet. 
 
-
-**Sender pseudocode (recommended):**
-
+The sender is stop-and-wait. It sends one packet, starts the timer, and waits. A valid ACK stops the timer and moves to the next packet. A corrupt or wrong ACK is ignored. If the timer runs out, the sender resends the same packet and restarts the timer.
+ 
+**Timer design:**
+- We use a deadline: `deadline = now + TIMEOUT` when a packet is sent.
+- While waiting, `sock.settimeout(deadline - now)` so the socket only blocks until the deadline.
+- `socket.timeout` = timer expired → resend and set a new deadline.
+- A corrupt or wrong ACK does **not** reset the deadline (it's a countdown, not a restart).
+- `TIMEOUT` is about 50 ms. On localhost the round trip is much less than that, so we don't get early timeouts, and the 95% runs still finish in a reasonable time.
+**Sender pseudocode:**
+```text
+seq = 0
+for each chunk (then END):
+    sndpkt = make_packet(DATA or END, seq, chunk)
+    send(sndpkt)
+    deadline = now + TIMEOUT
+    retries = 0
+    loop:
+        wait for a packet until deadline
+        if timeout:
+            if END and retries >= MAX_END_RETRIES: break
+            send(sndpkt); deadline = now + TIMEOUT; retries += 1
+            continue
+        if option 4 and maybe_drop(rate): continue          # ACK lost
+        if option 2: rcvpkt = maybe_corrupt(rcvpkt, rate)    # ACK bit-error
+        if is_corrupt(rcvpkt) or ack != seq: continue        # do nothing
+        break                                                # valid ACK, stop timer
+    seq = 1 - seq
+```
 
 ### 6.2 Receiver behavior
-The receiver checks incoming DATA packets using checksums and sequence numbers.  
-Valid packets are written to the output file. corrupted or duplicate Packets are not written. and the receiver resends its previous ACK.m 
-
-**Receiver pseudocode (recommended):**
-
+Same as RDT 2.2. The receiver checks each DATA packet. If it is valid and has the expected sequence number, it writes the data, sends an ACK, and flips the expected number. If it is corrupt or a duplicate, it resends its last ACK. In Option 5 a dropped packet is ignored completely (no ACK).
+ 
+**Receiver pseudocode:**
+```text
+expected = 0
+sndpkt = make_ack(1)           # see note below
+loop:
+    rcvpkt = receive()
+    if option 5 and maybe_drop(rate): continue          # DATA lost
+    if option 3: rcvpkt = maybe_corrupt(rcvpkt, rate)    # DATA bit-error
+    if is_corrupt(rcvpkt) or seq != expected:
+        send(sndpkt)                                     # resend last ACK
+        continue
+    if END: done = True else: write(payload)
+    sndpkt = make_ack(seq); send(sndpkt)
+    expected = 1 - expected
+    if done: keep answering for LINGER seconds, then stop
+```
+Note: like Phase 2, the last ACK starts as ACK 1 instead of using the textbook `oncethru` flag. The sender ignores ACK 1 while waiting for ACK 0, so it still resends on timeout, which gives the same behavior as the FSM.
 
 ### 6.3 Error/loss injection spec (if required by phase)
-Our project uses `corruption.py` to simulate bit errors.
+Both functions live in `corruption.py` and use the rate from `--error-rate` (0 to 1).
+ 
+| Function | What it does | Used by |
+|---|---|---|
+| `maybe_corrupt(pkt, rate)` | With chance `rate`, flips one random bit | Option 2 (sender, ACKs), Option 3 (receiver, DATA) |
+| `maybe_drop(rate)` | Returns True with chance `rate` | Option 4 (sender, ACKs), Option 5 (receiver, DATA) |
+ 
+- Injection happens right after `recvfrom()`, on the receive path, like the spec says.
+- A dropped packet is just skipped with `continue`, as if it never arrived.
 
-- **Option 1:** No corruption
-- **Option 2:** ACK corruption at the sender after receiving an ACK
-- **Option 3:** DATA corruption occurs at the receiver after receiving a DATA packet
-  
 
 ## 7) Experiments + metrics plan (required if phase requires figures/plots)
 ## 7.1 Measurement definition
-   Our team will measure how packet corruption affects file transfer time using different error rates.
 
-**Completion Time**
--**Start:** When the sender begins the file transfer 
--**Stop:** When the sender receives the final valid ACK and completes the transfer.
--**Measurement:** Python's `time.perf_counter()`
-
-**Experiment Settings:**
-- Corruption rates: 0% to 95%, increasing by 5%
-- Trials: 5 per corruption rate
-- Total: 100 trials per option
-- File: `sample.bmp`
-- Packet payload size: 1024 bytes
+- **Start:** right before the sender sends the first packet
+- **Stop:** when the sender gets the valid ACK for END (or hits the END retry cap)
+- **Tool:** `time.perf_counter()`
+- **Settings:** rates = [0, 5, 10, ..., 95], 5 runs per rate, 5 options → 500 runs total
+- **File:** `data/small.bmp`, payload size 1024 bytes
+- Printing is turned off (`--quiet`) during timing runs
+- Each run is checked with SHA-256
   
 
 
 ### 7.2 Output artifacts
 
-The experiment will produce:
-
- **CSV:** `results/option2_results.csv`
-- **Graph:** Average transfer time versus ACK corruption rate.
-- **Received file:** `results/received.bmp`
-- **Verification:** SHA-256 comparison of original and received files.
-
-The CSV records the corruption rate, trial number, and transfer time for each experiment.
-
-For Option 2, we completed 100 trials covering 20 different corruption rates.
+- `results/raw_times.csv` - option, rate, run, time
+- `results/avg_times.csv` - option, rate, average time
+- `results/completion_time.png` - 5 lines on one chart
 
 ## 8) Edge cases + test plan
 
@@ -265,84 +287,98 @@ For Option 2, we completed 100 trials covering 20 different corruption rates.
 
 | Edge case | Expected behavior |
 |---|---|
-| Corrupted DATA/ACK | Detect error and retransmit|
-| Duplicate packet | Ignore duplicate data and resend ACK |
-| Small final packet | Write remaining bytes correctly |
-| ACK timeout | Retransmit packet | 
-| Duplicate End | resend END ACK|
+| DATA lost | Sender times out and resends |
+| ACK lost | Sender times out and resends; receiver sees a duplicate and resends ACK |
+| Corrupt ACK | Ignored; sender waits for timeout |
+| Duplicate DATA | Not written again; receiver resends last ACK |
+| First packet lost/corrupt | Receiver sends ACK 1; sender ignores it and resends on timeout |
+| Last ACK (for END) lost | Receiver is still lingering and re-ACKs; sender caps END retries |
+| Small last chunk | Correct length is written |
+| Very high rate (95%) | Many timeouts, but the file still arrives correctly |
+ 
 
 
 ### 8.2 Tests you will write because of these edge cases
 
-**Unit Tests:** 
-- Verify checksums and packet encoding/decoding
-- Verify alternating sequence numbers
+**Unit tests:**
+- Packet round trip (make → extract)
+- Every single-bit flip is caught by the checksum
+- `maybe_drop(0)` never drops, `maybe_drop(1)` always drops
 
-**Integration Tests:**
-- Transfer file with and without corruption
-- Verify retransmission and duplicate handling
-- Compare original and received SHA-256 hashes 
+**Integration tests:**
+- Option 1 at 0%
+- Options 2-5 at 30% and 90%
+- SHA-256 match for every run
 
 
 ### 8.3 Test artifacts
-- **Input:** `data/sample.bmp`
+
+- **Input:** `data/small.bmp`
 - **Output:** `results/received.bmp`
-- **Results:** `results/option2_results.csv`
-- **Evidence:** Console logs, file hashes, and graphs 
+- **Results:** `results/raw_times.csv`, `results/avg_times.csv`, `results/completion_time.png`
+- **Evidence:** test output, file hashes, plot
+
 
    
 ## 9) Repo Structure + Reproducibility
 
-Our repository contains the source code, test files, and experiment results.
-
-**Project Structure:**
-
 ```text
-Network-Design-Phase-2/
+Network-Design-Phase-3/
 ├── src/
 │   ├── sender.py
 │   ├── receiver.py
 │   ├── packet.py
-│   ├── corruption.py
-│   └── experiment.py
+│   └── corruption.py
+├── scripts/
+│   ├── test_rdt.py
+│   ├── run_experiments.py
+│   └── plot_results.py
+├── docs/
+│   └── DESIGN_DOCUMENT.md
 ├── data/
-│   └── sample.bmp
+│   └── small.bmp
 ├── results/
-│   ├── received.bmp
-│   └── option2_results.csv
 └── README.md
 ```
-
-**Running Option 2:**
-
-Open two terminals in the `src` folder.
-
-**Terminal 1 - Receiver:**
-
-```powershell
-py receiver.py --option 2
+ 
+**Run one option** (from `src/`, receiver first):
+```bash
+python receiver.py --option 4 --error-rate 0.2
+python sender.py --option 4 --error-rate 0.2
 ```
-
-**Terminal 2 - Sender:**
-
-```powershell
-py sender.py --option 2 --error_rate 0.2
+ 
+**Tests and plot** (from the repo root):
+```bash
+python scripts/test_rdt.py
+python scripts/run_experiments.py
+python scripts/plot_results.py
 ```
-**Running Experiments:**
-
-```powershell
-py experiment.py
-```
-
-The README will contain setup instructions, and the design document and graphs will be included in the repository.
 
 
 ## 10) Team plan, ownership, and milestones
 ### 10.1 Task ownership
-| Task | Owner | Target date | Definition of done |
+|  Task | Owner | Target date | Definition of done |
 |---|---|---|---|
+| Design document | Maroua | TODO | Pushed to `docs/` before coding starts |
+| `maybe_drop()` | Maroua | TODO | Merged into `main` |
+| Countdown timer + ignore bad ACKs | Matthew | TODO | Options 1-3 still pass with the timer |
+| Option 4 ACK drop + END retry cap | Matthew | TODO | Option 4 passes at 30% and 90% |
+| Option 5 DATA drop | Oluchi | TODO | Option 5 passes at 30% and 90% |
+| Experiment + plot scripts | Oluchi | TODO | Runs on Phase 2 code first, then all 5 options |
+| `test_rdt.py` for 5 options | Maroua | TODO | All tests pass |
+| Run experiments | Oluchi | TODO | CSVs + plot in `results/` |
+| README | Maroua | TODO | All 5 options documented |
+| Demo video | Matthew | TODO | Link in README |
+| Final check + instructor access | Maroua | TODO | Rubric checked, instructor can see repo |
+ 
 
 
 ### 10.2 Milestones 
+
+1. **Design done** - this document pushed 
+2. **Code done** - timer, drops, and all 5 options working
+3. **Tested** - `test_rdt.py` passes for all 5 options 
+4. **Experiments done** - plot and CSVs in `results/` 
+5. **Submit** - README, video, contribution files, final check 
 
 
