@@ -27,7 +27,7 @@ from packet import TYPE_END, extract_packet, is_corrupt, make_ack
 from corruption import maybe_corrupt, maybe_drop
 
 RECV_BUFFER_SIZE = 2048
-LINGER = 2.0  # seconds to keep answering after END, in case our last ACK got corrupted
+LINGER = 12.0  # seconds to keep answering after END, in case our last ACK got corrupted
 
 
 def receive_file(out_path, port=9000, option=1, error_rate=0.0, quiet=False,
