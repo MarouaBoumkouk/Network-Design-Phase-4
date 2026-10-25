@@ -24,7 +24,7 @@ from corruption import maybe_corrupt, maybe_drop
 CHUNK_SIZE = 1024
 RECV_BUFFER_SIZE = 2048
 RDT_TIMEOUT = 0.05 # Waits 0.5 seconds before retransmission 
-MAX_END_RETRIES = 10 # stops endless retransmissions
+MAX_END_RETRIES = 50 # stops endless retransmissions
 
 
 def send_file(path, host="127.0.0.1", port=9000, option=1, error_rate=0.0, quiet=False):
