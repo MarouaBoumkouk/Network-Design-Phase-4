@@ -27,7 +27,7 @@ from packet import TYPE_END, extract_packet, is_corrupt, make_ack
 from corruption import maybe_corrupt, maybe_drop
 
 RECV_BUFFER_SIZE = 2048
-LINGER = 12.0  # seconds to keep answering after END, in case our last ACK got corrupted
+LINGER = 2.0  # seconds to keep answering after END, in case our last ACK got corrupted
 
 
 def receive_file(out_path, port=9000, option=1, error_rate=0.0, quiet=False,
@@ -47,13 +47,13 @@ def receive_file(out_path, port=9000, option=1, error_rate=0.0, quiet=False,
     stats = {"delivered": 0, "bytes": 0, "corrupt": 0, "duplicates": 0,
              "dropped": 0}
     done = False
-
+    sock.settimeout(10)   
     with open(out_path, "wb") as out:
         while True:
             try:
                 rcvpkt, addr = sock.recvfrom(RECV_BUFFER_SIZE)
             except socket.timeout:
-                break        # only reached after END, when the sender went quiet
+                break        
             if maybe_drop(data_loss_rate):
                 stats["dropped"] += 1
                 log("[recv] DATA lost -> no ACK")

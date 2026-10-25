@@ -19,11 +19,11 @@ import random
 
 from packet import (TYPE_ACK, TYPE_DATA, TYPE_END, extract_packet, is_corrupt,
                     make_packet)
-from corruption import maybe_corrupt
+from corruption import maybe_corrupt, maybe_drop
 
 CHUNK_SIZE = 1024
 RECV_BUFFER_SIZE = 2048
-RDT_TIMEOUT = 1.0 # Waits 1 second before retransmission 
+RDT_TIMEOUT = 0.05 # Waits 0.5 seconds before retransmission 
 MAX_END_RETRIES = 10 # stops endless retransmissions
 
 
@@ -70,10 +70,8 @@ def send_file(path, host="127.0.0.1", port=9000, option=1, error_rate=0.0, quiet
                 #limits the end retransmission 
                 if chunk is None:
                     if end_retries >= MAX_END_RETRIES:
-                        sock.close()
-                        raise RuntimeError(
-                            "END packet failed after maximum retries"
-                    )
+                        log("[send] no ACK for END, receiver must be done")
+                    break
                     end_retries += 1
 
                 stats["resent"] += 1 
@@ -94,7 +92,7 @@ def send_file(path, host="127.0.0.1", port=9000, option=1, error_rate=0.0, quiet
                 continue
 
             #option 4 simulate ack packet loss 
-            if random.random() < ack_loss_rate:
+            if maybe_drop(ack_loss_rate):
                 log(f"[send] ACK dropped (option 4) ")
                 continue
 
