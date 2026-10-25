@@ -3,7 +3,7 @@
 **Names:** Maroua Boumkouk, Matthew Nguyen, Oluchukwu Okeke   
 **GitHub Repo URL (with GitHub usernames):** https://github.com/MarouaBoumkouk/Network-Design-Phase-3  
 **Phase:** 3 
-**Submission Date:** Saturday 23 October 2026  
+**Submission Date:** Saturday 24 October 2026  
 **Version:** (1)
 
 ## 0) Executive Summary 
@@ -177,7 +177,7 @@ Same as Phase 2 (no changes).
 | `seq` (0/1) | Current sequence number | `sender.py`, `receiver.py` |
 | `sndpkt` | Last packet sent, kept for resends | `sender.py`, `receiver.py` |
 | `deadline` | Time when the timer runs out | `sender.py` |
-| `TIMEOUT` | Timer length (about 50 ms) | `sender.py` |
+| `RDT_TIMEOUT`| Timer length (about 50 ms) | `sender.py` |
 | `MAX_END_RETRIES` | Cap on END resends | `sender.py` |
 | `times[option][rate][run]` | Raw completion times | `run_experiments.py` | 
    
@@ -269,7 +269,7 @@ Both functions live in `corruption.py` and use the rate from `--error-rate` (0 t
 - **Stop:** when the sender gets the valid ACK for END (or hits the END retry cap)
 - **Tool:** `time.perf_counter()`
 - **Settings:** rates = [0, 5, 10, ..., 95], 5 runs per rate, 5 options → 500 runs total
-- **File:** `data/small.bmp`, payload size 1024 bytes
+- **File:** `data/tiny.bmp` (small copy of `small.bmp`, so 500 runs finish in under an hour), payload size 1024 bytes
 - Printing is turned off (`--quiet`) during timing runs
 - Each run is checked with SHA-256
   
@@ -307,7 +307,7 @@ Both functions live in `corruption.py` and use the rate from `--error-rate` (0 t
 
 **Integration tests:**
 - Option 1 at 0%
-- Options 2-5 at 30% and 90%
+- Options 2-5 at 30% and 50%
 - SHA-256 match for every run
 
 
@@ -337,7 +337,8 @@ Network-Design-Phase-3/
 │   └── DESIGN_DOCUMENT.md
 ├── data/
 │   └── small.bmp
-├── results/
+|    └── tiny.bmp
+├── results
 └── README.md
 ```
  
@@ -349,7 +350,7 @@ python sender.py --option 4 --error-rate 0.2
  
 **Tests and plot** (from the repo root):
 ```bash
-python scripts/test_rdt.py
+python scripts/run_experiments.py --file data/tiny.bmp
 python scripts/run_experiments.py
 python scripts/plot_results.py
 ```
