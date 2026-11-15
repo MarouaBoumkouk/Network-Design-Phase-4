@@ -25,9 +25,10 @@ CHUNK_SIZE = 1024
 RECV_BUFFER_SIZE = 2048
 RDT_TIMEOUT = 0.05 # Waits 0.5 seconds before retransmission 
 MAX_END_RETRIES = 50 # stops endless retransmissions
+WINDOW_SIZE = 5 
 
 
-def send_file(path, host="127.0.0.1", port=9000, option=1, error_rate=0.0, quiet=False):
+def send_file(path, host="127.0.0.1", port=9000, option=1, error_rate=0.0, quiet=False, window_size=5,no_recovery=False):
     """Send one file with RDT 2.2. Returns (elapsed_seconds, stats)."""
     ack_error_rate = error_rate if option == 2 else 0.0
     ack_loss_rate = error_rate if option == 4 else 0.0
@@ -43,82 +44,126 @@ def send_file(path, host="127.0.0.1", port=9000, option=1, error_rate=0.0, quiet
     stats = {"packets": len(chunks) + 1, "sent": 0, "resent": 0, "bad_acks": 0}
 
     start = time.perf_counter()
-    seq = 0
-    end_retries = 0
+    base = 0 
+    next_seq = 0
     
-    # the END packet goes through the same stop-and-wait steps as DATA
-    for i, chunk in enumerate(chunks + [None]):
-        # Wait for call `seq` from above: make_pkt + udt_send
-        if chunk is None:
-            sndpkt = make_packet(TYPE_END, seq)
-        else:
-            sndpkt = make_packet(TYPE_DATA, seq, chunk)
-        sock.sendto(sndpkt, dest)
-        stats["sent"] += 1
-        log(f"[send] pkt {i} seq={seq}")
+    total_packets = len(chunks) 
 
-        #start timer
+    end_retries = 0
+
+    #create all data packets with incerasing sequence number
+    packets =[
+        make_packet(TYPE_DATA, i, chunk)
+        for i, chunk in enumerate(chunks)
+    ]
+
+    #go back n sender timer
+    deadline = None
+
+    recover = True
+
+    #go back sliding window
+    while base < total_packets:
+        #send packets in window
+        while next_seq < base + window_size and next_seq < total_packets:
+            sock.sendto(packets[next_seq], dest)
+            stats["sent"] += 1
+            log(f"[send] packet {next_seq}")
+
+            #start timer when first packet is sent
+            if base == next_seq:
+                deadline = time.perf_counter() + RDT_TIMEOUT
+            next_seq += 1
+
+        #wait for ACKs or timeout
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            if no_recovery:
+                raise TimeoutError(f"Packet{base} timed out; recovery disabled")
+            #go back n retransmission
+            for i in range(base, next_seq):
+                sock.sendto(packets[i], dest)
+                stats["resent"] += 1
+                stats["sent"] += 1
+
+                log(f"[send] timeout, resend packet {i}")
+            deadline = time.monotonic() + RDT_TIMEOUT
+            continue
+        sock.settimeout(remaining)
+
+        try:
+            rcvpkt, _ = sock.recvfrom(RECV_BUFFER_SIZE)
+        except socket.timeout:
+            continue
+
+        #option 4 ACK loss
+        if maybe_drop(ack_loss_rate):
+            log("[send] ACK dropped")
+            continue
+        #option 2 ACk corruption
+        rcvpkt = maybe_corrupt(rcvpkt, ack_error_rate)
+
+        if is_corrupt(rcvpkt):
+            stats["bad_acks"] +=1
+            continue
+
+        pkt_type, _, ack, _ = extract_packet(rcvpkt)
+
+        #handle acks
+        if pkt_type == TYPE_ACK and base <= ack < next_seq:
+            
+            base = ack + 1
+
+            log(f"[send cumulative ACK] {ack}, base = {base}")
+            if base == next_seq:
+                deadline = None
+            else:
+                deadline = time.monotonic() + RDT_TIMEOUT
+
+        # Send END packet after all DATA packets are acknowledged
+    end_packet = make_packet(TYPE_END, total_packets)
+    end_acknowledged = False
+
+    for attempt in range(MAX_END_RETRIES):
+        sock.sendto(end_packet, dest)
+        stats["sent"] += 1
+
+        if attempt > 0:
+            stats["resent"] += 1
+
+        log(f"[send] END seq={total_packets}")
+
         deadline = time.monotonic() + RDT_TIMEOUT
 
-        # Wait for ACK `seq`
-        while True:
-            remaining = deadline - time.monotonic()
+        while time.monotonic() < deadline:
+            sock.settimeout(max(0.001, deadline - time.monotonic()))
 
-            #expired time retransmit 
-            if remaining <= 0:
-
-                #limits the end retransmission 
-                if chunk is None:
-                    if end_retries >= MAX_END_RETRIES:
-                        log("[send] no ACK for END, receiver must be done")
-                    break
-                    end_retries += 1
-
-                stats["resent"] += 1 
-                stats["sent"] += 1
-                sock.sendto(sndpkt, dest)
-                log(f"[send] timeout -> resend seq = {seq}")
-
-                #restarting timer
-                deadline = time.monotonic() + RDT_TIMEOUT
-                continue
-            
-            #wait for the rest of the time 
-            sock.settimeout(remaining)
-
-            try: 
+            try:
                 rcvpkt, _ = sock.recvfrom(RECV_BUFFER_SIZE)
             except socket.timeout:
-                continue
+                break
 
-            #option 4 simulate ack packet loss 
             if maybe_drop(ack_loss_rate):
-                log(f"[send] ACK dropped (option 4) ")
                 continue
 
-            # simulate ack corruption 
             rcvpkt = maybe_corrupt(rcvpkt, ack_error_rate)
 
-            #check if ack is corrupted
             if is_corrupt(rcvpkt):
                 stats["bad_acks"] += 1
-                log(f"[send]corrupt ACK -> keep waiting")
                 continue
 
-            #extract info
             pkt_type, _, ack, _ = extract_packet(rcvpkt)
 
-            #check for correct ack
-            if pkt_type == TYPE_ACK and ack == seq:
-                log(f"[send] got ACK {seq}")
-                break 
+            if pkt_type == TYPE_ACK and ack == total_packets:
+                end_acknowledged = True
+                log("[send] END acknowledged")
+                break
 
-            #wrong ack
-            stats["bad_acks"] += 1 
-            log(f"[send] incorrect ACK -> keep waiting")
+        if end_acknowledged:
+            break
 
-
-        seq = 1 - seq
+    if not end_acknowledged:
+        raise TimeoutError("END packet was not acknowledged")
 
     elapsed = time.perf_counter() - start
     sock.close()
@@ -137,8 +182,12 @@ def main():
     p.add_argument("--error-rate", type=float, default=0.0,
                    help="chance (0-1) that an ACK gets a bit flipped; Option 2 only")
     p.add_argument("--quiet", action="store_true")
+    p.add_argument("--window-size", type=int, default=5,
+                    help="Go-Back-N window size")
+    p.add_argument("--no-recovery", action="store_true",
+                   help="Disable recovery from packet loss")
     a = p.parse_args()
-    send_file(a.file, a.host, a.port, a.option, a.error_rate, a.quiet)
+    send_file(a.file, a.host, a.port, a.option, a.error_rate, a.quiet, a.window_size, a.no_recovery)
 
 
 if __name__ == "__main__":

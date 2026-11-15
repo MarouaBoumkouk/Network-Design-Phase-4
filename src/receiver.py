@@ -44,11 +44,11 @@ def receive_file(out_path, port=9000, option=1, error_rate=0.0, quiet=False,
         log(f"[recv] listening on port {port}, writing to {out_path}")
 
     expected = 0             # state: waiting for `expected` from below
-    sndpkt = make_ack(1)     # last ACK sent (see note at top)
+    sndpkt = make_ack(0xFFFFFFFF)     # last ACK sent (see note at top)
     stats = {"delivered": 0, "bytes": 0, "corrupt": 0, "duplicates": 0,
              "dropped": 0}
     done = False
-    sock.settimeout(10)   
+    sock.settimeout(120)   
     with open(out_path, "wb") as out:
         while True:
             try:
@@ -93,7 +93,7 @@ def receive_file(out_path, port=9000, option=1, error_rate=0.0, quiet=False,
             sndpkt = make_ack(seq)
             sock.sendto(sndpkt, addr)
             log(f"[recv] got seq={seq} -> ACK {seq}")
-            expected = 1 - expected
+            expected += 1
 
             if done:
                 # Stay around a bit: if our ACK for END was lost or corrupted the
