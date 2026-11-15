@@ -1,6 +1,6 @@
-"""Packet format for Phase 2 (RDT 2.2).
+"""Packet format for Phase 4 (Go-Back-N).
 
-Same 10-byte header as Phase 1, but now the ack and checksum fields are used.
+Same 13-byte header as Phase 1, but now the ack and checksum fields are used.
 
     type     1 byte   0=DATA, 1=END, 2=ACK
     seq      4 bytes  alternating bit, 0 or 1
@@ -14,8 +14,9 @@ TYPE_DATA = 0
 TYPE_END = 1
 TYPE_ACK = 2
 
-HEADER_FORMAT = ">BIBHH"
-HEADER_SIZE = struct.calcsize(HEADER_FORMAT)  # 10
+HEADER_FORMAT = ">BIIHH"
+HEADER_SIZE = struct.calcsize(HEADER_FORMAT)  # 13
+
 
 
 def checksum(data: bytes) -> int:
@@ -46,11 +47,12 @@ def is_corrupt(packet: bytes) -> bool:
     """True if the packet is too short, has a bad length, or fails the checksum."""
     if len(packet) < HEADER_SIZE:
         return True
-    _, _, _, length, _ = struct.unpack(HEADER_FORMAT, packet[:HEADER_SIZE])
+    pkt_type, seq, ack, length, csum = struct.unpack(HEADER_FORMAT, packet[:HEADER_SIZE])
     if length != len(packet) - HEADER_SIZE:
         return True
     # Summing a packet that already holds its checksum gives 0 if nothing changed.
-    return checksum(packet) != 0
+    header = struct.pack(HEADER_FORMAT, pkt_type, seq, ack, length, 0)
+    return checksum(header + packet[HEADER_SIZE:]) != csum
 
 
 def extract_packet(packet: bytes):
