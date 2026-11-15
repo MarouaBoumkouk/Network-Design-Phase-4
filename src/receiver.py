@@ -23,6 +23,7 @@ Usage (from src/):
 import argparse
 import socket
 
+
 from packet import TYPE_END, extract_packet, is_corrupt, make_ack
 from corruption import maybe_corrupt, maybe_drop
 
@@ -31,7 +32,7 @@ LINGER = 2.0  # seconds to keep answering after END, in case our last ACK got co
 
 
 def receive_file(out_path, port=9000, option=1, error_rate=0.0, quiet=False,
-                 sock=None, linger=LINGER):
+                 sock=None, linger=LINGER, recovery=True):
     """Receive one file with RDT 3.0 and write it to out_path. Returns stats."""
     data_error_rate = error_rate if option == 3 else 0.0
     data_loss_rate = error_rate if option == 5 else 0.0
@@ -60,6 +61,15 @@ def receive_file(out_path, port=9000, option=1, error_rate=0.0, quiet=False,
                 continue     # as if the packet never arrived
             rcvpkt = maybe_corrupt(rcvpkt, data_error_rate)
 
+            if not recovery:
+                # No recovery: no checksum, no order check, no ACKs
+                pkt_type, seq, _, payload = extract_packet(rcvpkt)
+                if pkt_type == TYPE_END:
+                    break
+                out.write(payload)
+                stats["delivered"] += 1
+                stats["bytes"] += len(payload)
+                continue
             if is_corrupt(rcvpkt):
                 stats["corrupt"] += 1
                 log(f"[recv] corrupt packet -> resend last ACK")
@@ -105,8 +115,12 @@ def main():
     p.add_argument("--error-rate", type=float, default=0.0,
                    help="chance (0-1) of a DATA bit-error (Option 3) or DATA loss (Option 5)")
     p.add_argument("--quiet", action="store_true")
+    p.add_argument("--no-recovery", action="store_true",
+                   help="turn off recovery (write everything, no checks, no ACKs)")
     a = p.parse_args()
-    receive_file(a.out, a.port, a.option, a.error_rate, a.quiet)
+    receive_file(a.out, a.port, a.option, a.error_rate, a.quiet,
+                 recovery=not a.no_recovery)
+
 
 
 if __name__ == "__main__":
