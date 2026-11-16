@@ -24,7 +24,7 @@ lines = {
 }
 
 rates, avg = [], {}
-with open(os.path.join(RESULTS, "option3_combined.csv")) as f:    
+with open(os.path.join(RESULTS, "graph1_combined.csv")) as f:    
     reader = csv.DictReader(f)
     options = [o for o in lines if f"option{o}_avg_s" in reader.fieldnames]
     for o in options:
@@ -32,8 +32,9 @@ with open(os.path.join(RESULTS, "option3_combined.csv")) as f:
     for row in reader:
         rates.append(int(row["rate_percent"]))
         for o in options:
-            avg[o].append(float(row[f"option{o}_avg_s"]))
-
+            value = row[f"option{o}_avg_s"]
+            avg[o].append(float(value) if value else float("nan"))
+            
 fig, ax = plt.subplots(figsize=(9, 5.5), dpi=150)
 for o in options:
     label, color, marker = lines[o]
