@@ -40,29 +40,62 @@ def sha256(path):
         return hashlib.sha256(f.read()).hexdigest()
 
 
-def one_run(in_file, out_file, option, rate):
+
+def one_run(in_file, out_file, option, rate, window_size=5):
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("127.0.0.1", 0))           # free port, so runs never mix
+    sock.bind(("127.0.0.1", 0))
+
     port = sock.getsockname()[1]
-    t = threading.Thread(target=receive_file,
-                         kwargs=dict(out_path=out_file, option=option,
-                                     error_rate=rate, quiet=True,
-                                     sock=sock, linger=0.2),
-                         daemon=True)
+
+    t = threading.Thread(
+        target=receive_file,
+        kwargs=dict(
+            out_path=out_file,
+            option=option,
+            error_rate=rate,
+            quiet=True,
+            sock=sock,
+            linger=0.2
+        ),
+        daemon=True
+    )
+
     t.start()
-    elapsed, stats = send_file(in_file, "127.0.0.1", port, option, rate, quiet=True)
-    t.join()
+
+    elapsed, stats = send_file(
+        in_file,
+        "127.0.0.1",
+        port,
+        option,
+        rate,
+        quiet=True,
+        window_size=window_size
+    )
+
+    t.join(timeout=5)
+
+    if t.is_alive():
+        raise RuntimeError(
+            f"Receiver did not finish: option={option}, rate={rate}"
+        )
+
     return elapsed, stats
 
 
+
 def main():
+    global rates
     p = argparse.ArgumentParser()
     p.add_argument("--file", default=os.path.join(ROOT, "data", "small.bmp"))
     p.add_argument("--runs", type=int, default=5)
+    p.add_argument("--max-rate", type=int,default=85, help="Maximum error/loss rate to test")
+    p.add_argument("--min-rate", type=int, default=0,
+               help="Minimum error/loss rate to test")
     p.add_argument("--options", type=int, nargs="+", default=list(ALL_OPTIONS),
                    choices=ALL_OPTIONS)
     a = p.parse_args()
     options = sorted(set(a.options))
+    rates = [r for r in range(a.min_rate, a.max_rate + 1, 5)]
 
     results_dir = os.path.join(ROOT, "results")
     os.makedirs(results_dir, exist_ok=True)
@@ -83,6 +116,10 @@ def main():
                 raw_rows.append([opt, rate, k, f"{elapsed:.6f}", stats.get("resent", "")])
             avg = statistics.mean(times[opt][r])
             print(f"option {opt}  rate {rate:2d}%  avg {avg:.4f} s", flush=True)
+            with open(os.path.join(results_dir, "progress.csv"),
+                      "a", newline="") as f:
+                w = csv.writer(f)
+                w.writerow([opt, rate, f"{avg:.6f}"])
 
     with open(os.path.join(results_dir, "raw_times.csv"), "w", newline="") as f:
         w = csv.writer(f)

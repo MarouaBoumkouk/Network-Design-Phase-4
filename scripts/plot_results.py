@@ -24,7 +24,7 @@ lines = {
 }
 
 rates, avg = [], {}
-with open(os.path.join(RESULTS, "avg_times.csv")) as f:
+with open(os.path.join(RESULTS, "option3_combined.csv")) as f:    
     reader = csv.DictReader(f)
     options = [o for o in lines if f"option{o}_avg_s" in reader.fieldnames]
     for o in options:
@@ -42,8 +42,9 @@ for o in options:
 
 ax.set_xticks(rates)
 ax.set_xlabel("Error / loss rate (%)")
-ax.set_ylabel("Completion time (s), average of 5 runs")
-ax.set_title("RDT 3.0 completion time vs error/loss rate")
+ax.set_ylabel("Average file transfer completion time (s)")
+ax.set_title("Phase 4 Go-Back-N: Completion Time vs Error/Loss Rate")
+
 ax.grid(True, color="#e3e3e0", linewidth=0.8)
 ax.set_axisbelow(True)
 for side in ("top", "right"):
