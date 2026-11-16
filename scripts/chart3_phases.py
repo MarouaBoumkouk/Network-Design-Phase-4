@@ -75,6 +75,8 @@ def sha256(path):
 
 
 def one_run(phase, send_file, receive_file, in_file, out_file, option, rate):
+    if os.path.exists(out_file):
+        os.remove(out_file)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(("127.0.0.1", 0))             # free port, so runs never mix
     port = sock.getsockname()[1]
